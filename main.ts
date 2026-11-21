@@ -10,7 +10,7 @@
 // /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const botDir = process.env.MAKEFUN_BOT_DIR ?? '/bot';
@@ -22,5 +22,17 @@ try {
   copyFileSync(join(botDir, 'VIDEO.json'), join(outputDir, 'VIDEO.json'));
 } catch (err) {
   console.error(`could not copy VIDEO.json from ${botDir}: ${(err as Error).message}`);
+  process.exit(1);
+}
+
+// Fail loudly rather than hand the grader a malformed file: the copied
+// VIDEO.json must parse and carry a non-empty "url" string.
+try {
+  const parsed = JSON.parse(readFileSync(join(outputDir, 'VIDEO.json'), 'utf8'));
+  if (typeof parsed.url !== 'string' || parsed.url.length === 0) {
+    throw new Error('VIDEO.json has no "url" string');
+  }
+} catch (err) {
+  console.error(`VIDEO.json in ${outputDir} is not valid: ${(err as Error).message}`);
   process.exit(1);
 }
